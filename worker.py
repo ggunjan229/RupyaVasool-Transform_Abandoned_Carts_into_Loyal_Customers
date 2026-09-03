@@ -100,7 +100,10 @@ def main():
     print("Worker started. Scanning for stale carts every "
           f"{SCAN_INTERVAL_SECONDS} seconds. Press Ctrl+C to stop.")
 
-    
+    try:
+        scheduler.start()   # this call blocks forever, running jobs on schedule
+    except (KeyboardInterrupt, SystemExit):
+        print("Worker stopped.")
 
 
 if __name__ == "__main__":
