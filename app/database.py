@@ -87,6 +87,7 @@ class Channel(str, enum.Enum):
 
 class ActionTaken(str, enum.Enum):
     SENT = "SENT"
+    DISPATCH_FAILED = "DISPATCH_FAILED"
     SKIPPED_SUPPRESSED = "SKIPPED_SUPPRESSED"
     SKIPPED_OPT_OUT = "SKIPPED_OPT_OUT"
     SKIPPED_MAX_ATTEMPTS = "SKIPPED_MAX_ATTEMPTS"
