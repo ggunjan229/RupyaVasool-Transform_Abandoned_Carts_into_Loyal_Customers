@@ -1,36 +1,234 @@
-<!-- app/templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>{{ app_name }}</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ app_name }} — Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-950 text-gray-100 p-8">
-    <h1 class="text-2xl font-bold mb-4">{{ app_name }} — Mock Storefront</h1>
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="text-left border-b border-gray-700">
-                <th class="py-2">Cart ID</th>
-                <th>Customer</th>
-                <th>Item</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Recovered</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for inv in invoices %}
-            <tr class="border-b border-gray-800">
-                <td class="py-2 font-mono text-xs">{{ inv.id[:8] }}</td>
-                <td>{{ inv.customer_name }}</td>
-                <td>{{ inv.item_name }}</td>
-                <td>₹{{ inv.amount }}</td>
-                <td>{{ inv.payment_status.value }}</td>
-                <td>₹{{ inv.conversion_value_recovered }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+    <header class="border-b border-gray-800 px-6 py-4">
+        <h1 class="text-xl font-bold tracking-tight">{{ app_name }}</h1>
+        <p class="text-sm text-gray-500">Detect → Diagnose → Recover, with a compliant audit trail</p>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+
+        <!-- ================= LEFT PANEL: STORE SIMULATOR ================= -->
+        <section class="bg-gray-900 rounded-xl p-5 border border-gray-800">
+            <h2 class="text-lg font-semibold mb-1">🛍️ Store Simulator</h2>
+            <p class="text-xs text-gray-500 mb-4">Trigger real checkout events that the recovery agent will detect.</p>
+
+            <div id="product-list" class="space-y-4">
+                <!-- product cards injected below -->
+            </div>
+        </section>
+
+        <!-- ================= RIGHT PANEL: ANALYTICS + AUDIT ================= -->
+        <section class="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col">
+            <h2 class="text-lg font-semibold mb-4">📊 Agent Analytics & Compliance Dashboard</h2>
+
+            <!-- Metric cards -->
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div class="bg-red-950/40 border border-red-900 rounded-lg p-4">
+                    <p class="text-xs text-red-400 uppercase tracking-wide">Total Lost Revenue</p>
+                    <p id="metric-lost" class="text-2xl font-bold text-red-300 mt-1">₹0.00</p>
+                </div>
+                <div class="bg-green-950/40 border border-green-900 rounded-lg p-4">
+                    <p class="text-xs text-green-400 uppercase tracking-wide">Total Recovered Revenue</p>
+                    <p id="metric-recovered" class="text-2xl font-bold text-green-300 mt-1">₹0.00</p>
+                </div>
+            </div>
+
+            <!-- Cart list -->
+            <div class="mb-5">
+                <h3 class="text-sm font-semibold text-gray-400 mb-2">Processed Carts</h3>
+                <div class="border border-gray-800 rounded-lg overflow-hidden max-h-56 overflow-y-auto">
+                    <table class="w-full text-xs">
+                        <thead class="bg-gray-800 text-gray-400 sticky top-0">
+                            <tr>
+                                <th class="text-left px-3 py-2">Customer</th>
+                                <th class="text-left px-3 py-2">Item</th>
+                                <th class="text-left px-3 py-2">Amount</th>
+                                <th class="text-left px-3 py-2">Status</th>
+                                <th class="text-left px-3 py-2">Recovered</th>
+                                <th class="text-left px-3 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-table-body">
+                            <tr><td colspan="6" class="px-3 py-4 text-center text-gray-600">No carts yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Audit trail live feed -->
+            <div class="flex-1 min-h-0">
+                <h3 class="text-sm font-semibold text-gray-400 mb-2">Agent Audit Trail (Live Feed)</h3>
+                <div id="audit-feed" class="border border-gray-800 rounded-lg p-3 space-y-2 max-h-64 overflow-y-auto bg-black/30">
+                    <p class="text-xs text-gray-600">No agent actions logged yet. Run the worker to populate this feed.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const PRODUCTS = [
+            { name: "Premium Leather Jacket", price: 200.00 },
+            { name: "Wireless Noise-Cancelling Headphones", price: 149.00 },
+            { name: "Smart Fitness Watch", price: 89.50 },
+        ];
+
+        const STATUS_COLORS = {
+            PENDING: "text-yellow-400",
+            FAILED: "text-red-400",
+            PAID: "text-green-400",
+        };
+
+        function renderProducts() {
+            const container = document.getElementById("product-list");
+            container.innerHTML = PRODUCTS.map((p, idx) => `
+                <div class="bg-gray-800/60 rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                        <p class="font-medium">${p.name}</p>
+                        <p class="text-sm text-gray-400">₹${p.price.toFixed(2)}</p>
+                        <p id="status-${idx}" class="text-xs text-gray-500 mt-1"></p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="simulateAbandon(${idx})"
+                            class="text-xs bg-yellow-700/30 hover:bg-yellow-700/50 text-yellow-300 px-3 py-1.5 rounded-md transition">
+                            Simulate Abandoned Cart
+                        </button>
+                        <button onclick="simulateFailure(${idx})"
+                            class="text-xs bg-red-700/30 hover:bg-red-700/50 text-red-300 px-3 py-1.5 rounded-md transition">
+                            Simulate Payment Failure
+                        </button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        function setStatus(idx, msg) {
+            const el = document.getElementById(`status-${idx}`);
+            if (el) el.textContent = msg;
+        }
+
+        async function createCart(idx) {
+            const product = PRODUCTS[idx];
+            const res = await fetch("/api/checkout/initiate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customer_name: `Guest_${Math.floor(Math.random() * 9000 + 1000)}`,
+                    customer_email: `guest${Date.now()}@example.com`,
+                    item_name: product.name,
+                    amount: product.price,
+                }),
+            });
+            if (!res.ok) throw new Error(`initiate failed: ${res.status}`);
+            const data = await res.json();
+            return data.data.id;
+        }
+
+        async function simulateAbandon(idx) {
+            try {
+                setStatus(idx, "Creating cart...");
+                const cartId = await createCart(idx);
+                setStatus(idx, `Cart ${cartId.slice(0, 8)} created — abandoned (PENDING).`);
+                refreshDashboard();
+            } catch (err) {
+                setStatus(idx, `Error: ${err.message}`);
+            }
+        }
+
+        async function simulateFailure(idx) {
+            try {
+                setStatus(idx, "Creating cart...");
+                const cartId = await createCart(idx);
+                setStatus(idx, "Triggering payment failure...");
+                const res = await fetch("/api/checkout/simulate-failure", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cart_id: cartId }),
+                });
+                if (!res.ok) throw new Error(`simulate-failure failed: ${res.status}`);
+                setStatus(idx, `Cart ${cartId.slice(0, 8)} FAILED. Agent will pick this up.`);
+                refreshDashboard();
+            } catch (err) {
+                setStatus(idx, `Error: ${err.message}`);
+            }
+        }
+
+        async function markPaid(cartId) {
+            try {
+                const res = await fetch("/api/checkout/simulate-success", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cart_id: cartId }),
+                });
+                if (!res.ok) throw new Error(`simulate-success failed: ${res.status}`);
+                refreshDashboard();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function fmtMoney(v) {
+            return `₹${parseFloat(v).toFixed(2)}`;
+        }
+
+        async function refreshDashboard() {
+            try {
+                const res = await fetch("/api/dashboard");
+                if (!res.ok) throw new Error(`dashboard fetch failed: ${res.status}`);
+                const data = await res.json();
+
+                document.getElementById("metric-lost").textContent = fmtMoney(data.totals.total_lost);
+                document.getElementById("metric-recovered").textContent = fmtMoney(data.totals.total_recovered);
+
+                const tbody = document.getElementById("cart-table-body");
+                if (!data.invoices.length) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-gray-600">No carts yet.</td></tr>`;
+                } else {
+                    tbody.innerHTML = data.invoices.map(inv => `
+                        <tr class="border-t border-gray-800">
+                            <td class="px-3 py-2">${inv.customer_name}</td>
+                            <td class="px-3 py-2">${inv.item_name}</td>
+                            <td class="px-3 py-2">${fmtMoney(inv.amount)}</td>
+                            <td class="px-3 py-2 font-medium ${STATUS_COLORS[inv.payment_status] || 'text-gray-400'}">${inv.payment_status}</td>
+                            <td class="px-3 py-2">${fmtMoney(inv.conversion_value_recovered)}</td>
+                            <td class="px-3 py-2">
+                                ${inv.payment_status !== "PAID"
+                                    ? `<button onclick="markPaid('${inv.id}')" class="text-[10px] bg-green-800/40 hover:bg-green-800/60 text-green-300 px-2 py-1 rounded">Mark Paid</button>`
+                                    : ""}
+                            </td>
+                        </tr>
+                    `).join("");
+                }
+
+                const feed = document.getElementById("audit-feed");
+                if (!data.audit_logs.length) {
+                    feed.innerHTML = `<p class="text-xs text-gray-600">No agent actions logged yet. Run the worker to populate this feed.</p>`;
+                } else {
+                    feed.innerHTML = data.audit_logs.map(log => `
+                        <div class="text-xs border-l-2 border-indigo-700 pl-2">
+                            <span class="text-indigo-300 font-medium">Step ${log.step_number} · ${log.channel_used}</span>
+                            <span class="text-gray-500"> — ${new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <p class="text-gray-300">${log.content_sent}</p>
+                            <p class="text-gray-500">Action: ${log.action_taken}</p>
+                        </div>
+                    `).join("");
+                }
+            } catch (err) {
+                console.error("Dashboard refresh failed:", err);
+            }
+        }
+
+        renderProducts();
+        refreshDashboard();
+        setInterval(refreshDashboard, 4000); // poll every 4s for live updates
+    </script>
 </body>
 </html>

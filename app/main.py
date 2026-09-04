@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
-from app.database import get_db, Invoice, PaymentStatus
+from app.database import get_db, Invoice, PaymentStatus, AgentAuditTrail
 
 app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
@@ -231,6 +231,62 @@ async def simulate_success(payload: CheckoutStatusRequest, db: Session = Depends
             detail=f"Database error while simulating success: {e}",
         )
 
+# ---------------------------------------------------------------------------
+# Dashboard data — polled by the frontend for live metrics
+# ---------------------------------------------------------------------------
+
+from app.database import AgentAuditTrail  # add to your existing database import line instead if you prefer
+
+@app.get("/api/dashboard")
+async def dashboard_data(db: Session = Depends(get_db)):
+    try:
+        invoices = db.query(Invoice).order_by(Invoice.updated_at.desc()).limit(100).all()
+        audit_logs = (
+            db.query(AgentAuditTrail)
+            .order_by(AgentAuditTrail.timestamp.desc())
+            .limit(50)
+            .all()
+        )
+
+        total_recovered = sum((inv.conversion_value_recovered for inv in invoices), Decimal("0.00"))
+        total_lost = sum(
+            (inv.amount for inv in invoices
+             if inv.payment_status == PaymentStatus.FAILED and inv.conversion_value_recovered == 0),
+            Decimal("0.00"),
+        )
+
+        return {
+            "success": True,
+            "totals": {
+                "total_recovered": str(total_recovered),
+                "total_lost": str(total_lost),
+            },
+            "invoices": [
+                {
+                    "id": inv.id,
+                    "customer_name": inv.customer_name,
+                    "item_name": inv.item_name,
+                    "amount": str(inv.amount),
+                    "payment_status": inv.payment_status.value,
+                    "conversion_value_recovered": str(inv.conversion_value_recovered),
+                }
+                for inv in invoices
+            ],
+            "audit_logs": [
+                {
+                    "id": log.id,
+                    "cart_id": log.cart_id,
+                    "step_number": log.step_number,
+                    "channel_used": log.channel_used.value,
+                    "content_sent": log.content_sent,
+                    "action_taken": log.action_taken.value,
+                    "timestamp": log.timestamp.isoformat(),
+                }
+                for log in audit_logs
+            ],
+        }
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail=f"Dashboard query failed: {e}")
 
 # ---------------------------------------------------------------------------
 # Health check — useful for confirming the server + DB are both alive
