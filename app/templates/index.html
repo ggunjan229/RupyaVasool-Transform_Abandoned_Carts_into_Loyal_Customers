@@ -1,0 +1,36 @@
+<!-- app/templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ app_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 p-8">
+    <h1 class="text-2xl font-bold mb-4">{{ app_name }} — Mock Storefront</h1>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-left border-b border-gray-700">
+                <th class="py-2">Cart ID</th>
+                <th>Customer</th>
+                <th>Item</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Recovered</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr class="border-b border-gray-800">
+                <td class="py-2 font-mono text-xs">{{ inv.id[:8] }}</td>
+                <td>{{ inv.customer_name }}</td>
+                <td>{{ inv.item_name }}</td>
+                <td>₹{{ inv.amount }}</td>
+                <td>{{ inv.payment_status.value }}</td>
+                <td>₹{{ inv.conversion_value_recovered }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
