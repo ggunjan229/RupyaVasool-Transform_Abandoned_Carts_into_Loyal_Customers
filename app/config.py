@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # --- Gemini ---
     GEMINI_API_KEY: str
-    GEMINI_MODEL: str = "gemini-2.5-flash"  # fast + cheap for batch diagnosis
+    GEMINI_MODEL: str = "gemini-3.6-flash"  # fast + cheap for batch diagnosis
 
     # --- Escalation cadence (days since last action) ---
     STAGE_1_DAY: int = 1
