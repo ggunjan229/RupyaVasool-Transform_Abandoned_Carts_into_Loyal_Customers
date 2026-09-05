@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ app_name }} — Control Center</title>
+    <title>{{ app_name }} - Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen">
@@ -136,7 +136,7 @@
             try {
                 setStatus(idx, "Creating cart...");
                 const cartId = await createCart(idx);
-                setStatus(idx, `Cart ${cartId.slice(0, 8)} created — abandoned (PENDING).`);
+                setStatus(idx, `Cart ${cartId.slice(0, 8)} created - abandoned (PENDING).`);
                 refreshDashboard();
             } catch (err) {
                 setStatus(idx, `Error: ${err.message}`);
@@ -215,7 +215,7 @@
                     feed.innerHTML = data.audit_logs.map(log => `
                         <div class="text-xs border-l-2 border-indigo-700 pl-2">
                             <span class="text-indigo-300 font-medium">Step ${log.step_number} · ${log.channel_used}</span>
-                            <span class="text-gray-500"> — ${new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <span class="text-gray-500"> - ${new Date(log.timestamp).toLocaleTimeString()}</span>
                             <p class="text-gray-300">${log.content_sent}</p>
                             <p class="text-gray-500">Action: ${log.action_taken}</p>
                         </div>

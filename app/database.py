@@ -1,7 +1,7 @@
 # app/database.py
 """
 Database layer for AI Revenue Recovery.
-Auto-initializes all tables on import — safe to call multiple times (idempotent).
+Auto-initializes all tables on import - safe to call multiple times (idempotent).
 """
 
 import uuid
@@ -137,7 +137,7 @@ class Invoice(Base):
     )
 
     def is_recoverable(self) -> bool:
-        """Central stopping-rule check — call this before ANY outbound action."""
+        """Central stopping-rule check - call this before ANY outbound action."""
         if self.payment_status == PaymentStatus.PAID:
             return False
         if self.is_suppressed or self.opt_out:
@@ -180,7 +180,7 @@ class AgentAuditTrail(Base):
 
 
 # ---------------------------------------------------------------------------
-# Table 3: BatchRun (measured recovery per batch — required for "The Bar")
+# Table 3: BatchRun (measured recovery per batch - required for "The Bar")
 # ---------------------------------------------------------------------------
 
 class BatchRun(Base):
@@ -213,7 +213,7 @@ def init_db() -> None:
 
 
 def get_db():
-    """FastAPI dependency — yields a DB session and always closes it."""
+    """FastAPI dependency - yields a DB session and always closes it."""
     db: Session = SessionLocal()
     try:
         yield db
