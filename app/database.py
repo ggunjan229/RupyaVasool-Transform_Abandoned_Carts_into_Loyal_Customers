@@ -42,7 +42,7 @@ connect_args = {"check_same_thread": False}  # required for SQLite + FastAPI thr
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args=connect_args,
-    echo=settings.DEBUG,
+    echo=False,
     future=True,
 )
 
