@@ -176,13 +176,14 @@ Write the message now, following all rules above.
 )
 def _call_gemini(prompt: str) -> str:
     client = _get_client()
-        # 1. Initialize the stateful chat session with your configurations
-    chat = client.chats.create(
+    response = client.models.generate_content(
         model=settings.GEMINI_MODEL,
+        contents=prompt,
         config=genai_types.GenerateContentConfig(
             system_instruction=_BASE_SYSTEM_INSTRUCTION,
             temperature=0.7,
-            max_output_tokens=220,
+            max_output_tokens=512,
+            thinking_config=genai_types.ThinkingConfig(thinking_budget=0),
         ),
     )
 
