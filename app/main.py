@@ -1,7 +1,7 @@
 # app/main.py
 """
 Core FastAPI server: mock storefront + checkout tracking hooks.
-All DB operations are wrapped defensively — no unhandled 500s on bad input.
+All DB operations are wrapped defensively - no unhandled 500s on bad input.
 """
 
 from decimal import Decimal, InvalidOperation
@@ -22,7 +22,7 @@ app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 
 templates = Jinja2Templates(directory="app/templates")
 
-# Static files are optional — only mount if the folder exists, so a missing
+# Static files are optional - only mount if the folder exists, so a missing
 # app/static dir never crashes startup.
 import os
 if os.path.isdir("app/static"):
@@ -92,7 +92,7 @@ def _get_invoice_or_404(db: Session, cart_id: str) -> Invoice:
 
 
 # ---------------------------------------------------------------------------
-# 1. Root — mock storefront
+# 1. Root - mock storefront
 # ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
@@ -105,7 +105,7 @@ async def root(request: Request, db: Session = Depends(get_db)):
             .all()
         )
     except SQLAlchemyError as e:
-        # Never let a dashboard read crash the storefront — degrade gracefully
+        # Never let a dashboard read crash the storefront - degrade gracefully
         invoices = []
         print(f"[WARN] Failed to load invoices for dashboard: {e}")
 
@@ -117,7 +117,7 @@ async def root(request: Request, db: Session = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------------
-# 2. POST /api/checkout/initiate — create a PENDING invoice
+# 2. POST /api/checkout/initiate - create a PENDING invoice
 # ---------------------------------------------------------------------------
 
 @app.post("/api/checkout/initiate", response_model=ApiResponse, status_code=status.HTTP_201_CREATED)
@@ -155,7 +155,7 @@ async def initiate_checkout(payload: CheckoutInitiateRequest, db: Session = Depe
 
 
 # ---------------------------------------------------------------------------
-# 3. POST /api/checkout/simulate-failure — trigger event for recovery agent
+# 3. POST /api/checkout/simulate-failure - trigger event for recovery agent
 # ---------------------------------------------------------------------------
 
 @app.post("/api/checkout/simulate-failure", response_model=ApiResponse)
@@ -167,7 +167,7 @@ async def simulate_failure(payload: CheckoutStatusRequest, db: Session = Depends
         if invoice.payment_status == PaymentStatus.PAID:
             return ApiResponse(
                 success=False,
-                message=f"Cart {invoice.id} is already PAID — failure event ignored.",
+                message=f"Cart {invoice.id} is already PAID - failure event ignored.",
                 data=InvoiceResponse.model_validate(invoice),
             )
 
@@ -192,7 +192,7 @@ async def simulate_failure(payload: CheckoutStatusRequest, db: Session = Depends
 
 
 # ---------------------------------------------------------------------------
-# 4. POST /api/checkout/simulate-success — the critical Stopping Rule trigger
+# 4. POST /api/checkout/simulate-success - the critical Stopping Rule trigger
 # ---------------------------------------------------------------------------
 
 @app.post("/api/checkout/simulate-success", response_model=ApiResponse)
@@ -204,7 +204,7 @@ async def simulate_success(payload: CheckoutStatusRequest, db: Session = Depends
         invoice.payment_status = PaymentStatus.PAID
 
         # If the agent had already recovered value on prior attempts, keep it;
-        # otherwise this is a fresh, unassisted recovery — worker won't
+        # otherwise this is a fresh, unassisted recovery - worker won't
         # touch this cart again once payment_status == PAID (see
         # Invoice.is_recoverable() in database.py).
         if invoice.conversion_value_recovered == 0:
@@ -217,7 +217,7 @@ async def simulate_success(payload: CheckoutStatusRequest, db: Session = Depends
             success=True,
             message=(
                 f"Cart {invoice.id} marked PAID (was {previous_status}). "
-                f"Stopping rule active — agent will halt on next check."
+                f"Stopping rule active - agent will halt on next check."
             ),
             data=InvoiceResponse.model_validate(invoice),
         )
@@ -232,7 +232,7 @@ async def simulate_success(payload: CheckoutStatusRequest, db: Session = Depends
         )
 
 # ---------------------------------------------------------------------------
-# Dashboard data — polled by the frontend for live metrics
+# Dashboard data - polled by the frontend for live metrics
 # ---------------------------------------------------------------------------
 
 from app.database import AgentAuditTrail  # add to your existing database import line instead if you prefer
@@ -289,7 +289,7 @@ async def dashboard_data(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Dashboard query failed: {e}")
 
 # ---------------------------------------------------------------------------
-# Health check — useful for confirming the server + DB are both alive
+# Health check - useful for confirming the server + DB are both alive
 # ---------------------------------------------------------------------------
 
 @app.get("/api/health")

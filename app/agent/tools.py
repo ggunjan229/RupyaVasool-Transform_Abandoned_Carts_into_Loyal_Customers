@@ -5,7 +5,7 @@ Execution layer: simulated delivery channels for the recovery agent.
 These functions stand in for real Twilio/SendGrid calls so the whole
 pipeline is testable locally with zero API cost. The return contract
 {"status": ..., "timestamp": ...} is what run_worker.py will parse to
-write the AgentAuditTrail row — so the shape of this dict matters and
+write the AgentAuditTrail row - so the shape of this dict matters and
 should not be changed casually once the worker depends on it.
 """
 
@@ -24,7 +24,7 @@ _BORDER_WIDTH = 78
 
 
 # ---------------------------------------------------------------------------
-# Validation helpers — fail loud and early rather than "sending" garbage
+# Validation helpers - fail loud and early rather than "sending" garbage
 # ---------------------------------------------------------------------------
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -77,7 +77,7 @@ def send_recovery_email(email: str, subject: str, body: str) -> dict:
             raise ValueError("Email body cannot be empty.")
 
         _print_bordered(
-            f"📧  SIMULATED EMAIL DISPATCH  —  {timestamp}",
+            f"📧  SIMULATED EMAIL DISPATCH  -  {timestamp}",
             [
                 f"To      : {email}",
                 f"Subject : {subject}",
@@ -94,7 +94,7 @@ def send_recovery_email(email: str, subject: str, body: str) -> dict:
         }
 
     except ValueError as e:
-        logger.warning(f"[tools] Email send skipped — validation failed: {e}")
+        logger.warning(f"[tools] Email send skipped - validation failed: {e}")
         return {
             "status": "failed",
             "timestamp": timestamp,
@@ -137,7 +137,7 @@ def send_recovery_whatsapp(phone: str, body: str) -> dict:
             raise ValueError("WhatsApp message body cannot be empty.")
 
         _print_bordered(
-            f"💬  SIMULATED WHATSAPP DISPATCH  —  {timestamp}",
+            f"💬  SIMULATED WHATSAPP DISPATCH  -  {timestamp}",
             [
                 f"To : {phone}",
                 "-" * (_BORDER_WIDTH - 4),
@@ -153,7 +153,7 @@ def send_recovery_whatsapp(phone: str, body: str) -> dict:
         }
 
     except ValueError as e:
-        logger.warning(f"[tools] WhatsApp send skipped — validation failed: {e}")
+        logger.warning(f"[tools] WhatsApp send skipped - validation failed: {e}")
         return {
             "status": "failed",
             "timestamp": timestamp,
