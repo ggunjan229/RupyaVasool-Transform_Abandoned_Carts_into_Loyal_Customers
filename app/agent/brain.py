@@ -5,7 +5,7 @@ stage-appropriate recovery message using Gemini.
 
 Design principle (carried over from the architecture blueprint):
 Gemini decides TONE and CONTENT. It never decides WHETHER or WHEN to act,
-or WHAT discount to offer — those are deterministic, code-controlled facts
+or WHAT discount to offer - those are deterministic, code-controlled facts
 passed into the prompt. This keeps the compliance story intact: an LLM
 hallucination here can produce a badly-worded email, never an unauthorized
 discount or an out-of-sequence escalation.
@@ -55,13 +55,13 @@ class GenerationFailedError(BrainError):
 # ---------------------------------------------------------------------------
 
 class RecoveryStep(IntEnum):
-    IMMEDIATE_REASSURANCE = 1   # Step 1 — Day 0/immediate
-    STRATEGIC_NUDGE = 2         # Step 2 — Day 2
-    FINAL_NOTICE = 3            # Step 3 — Day 4
+    IMMEDIATE_REASSURANCE = 1   # Step 1 - Day 0/immediate
+    STRATEGIC_NUDGE = 2         # Step 2 - Day 2
+    FINAL_NOTICE = 3            # Step 3 - Day 4
 
 
 # ---------------------------------------------------------------------------
-# Client (lazy singleton — avoids crashing on import if key is missing)
+# Client (lazy singleton - avoids crashing on import if key is missing)
 # ---------------------------------------------------------------------------
 
 _client: Optional[genai.Client] = None
@@ -104,10 +104,10 @@ STRICT OUTPUT RULES:
 
 _STEP_INSTRUCTIONS = {
     RecoveryStep.IMMEDIATE_REASSURANCE: """
-CONTEXT: This is Step 1 — an immediate, same-day message after a payment attempt
+CONTEXT: This is Step 1 - an immediate, same-day message after a payment attempt
 failed. The failure reason is: "{failure_reason}".
 
-TONE: Act as a helpful store clerk clearing a simple transaction roadblock —
+TONE: Act as a helpful store clerk clearing a simple transaction roadblock -
 calm, reassuring, zero urgency, zero sales pressure.
 
 RULES FOR THIS STEP:
@@ -119,10 +119,10 @@ RULES FOR THIS STEP:
   this is often on the bank's side and easily resolved by retrying.
 """,
     RecoveryStep.STRATEGIC_NUDGE: """
-CONTEXT: This is Step 2 — a follow-up message sent because the order is still
+CONTEXT: This is Step 2 - a follow-up message sent because the order is still
 unrecovered after the first reassurance message (Day 2).
 
-TONE: Warm, personal, mildly persuasive — a strategic nudge, not a hard sell.
+TONE: Warm, personal, mildly persuasive - a strategic nudge, not a hard sell.
 
 RULES FOR THIS STEP:
 - You MUST offer the exact coupon code SAVE5 for 5% off, and nothing more.
@@ -130,10 +130,10 @@ RULES FOR THIS STEP:
 - Create light urgency without being pushy (e.g., mention limited-time use).
 """,
     RecoveryStep.FINAL_NOTICE: """
-CONTEXT: This is Step 3 — a final notice message sent because the order is
+CONTEXT: This is Step 3 - a final notice message sent because the order is
 still unrecovered after both prior attempts (Day 4).
 
-TONE: Courteous, respectful, final — no pressure, no guilt-tripping.
+TONE: Courteous, respectful, final - no pressure, no guilt-tripping.
 
 RULES FOR THIS STEP:
 - Clearly and politely state that the reserved item(s) will shortly be
@@ -226,10 +226,10 @@ def generate_recovery_message(
         return _call_gemini(prompt)
 
     except MissingAPIKeyError:
-        raise  # already the right exception type — surface as-is
+        raise  # already the right exception type - surface as-is
 
     except ClientError as e:
-        # 4xx-class errors: bad key, bad request, quota — not worth retrying
+        # 4xx-class errors: bad key, bad request, quota - not worth retrying
         logger.error(f"[brain] Gemini client error (non-retryable): {e}")
         raise GenerationFailedError(f"Gemini rejected the request: {e}") from e
 
@@ -247,7 +247,7 @@ def generate_recovery_message(
 
 
 # ---------------------------------------------------------------------------
-# Fallback templates — used by tools.py/worker if Gemini is down and the
+# Fallback templates - used by tools.py/worker if Gemini is down and the
 # workflow must not silently skip an escalation step (compliance requirement:
 # the cadence must still fire even if the AI text-generation layer fails).
 # ---------------------------------------------------------------------------
@@ -255,12 +255,12 @@ def generate_recovery_message(
 FALLBACK_MESSAGES = {
     RecoveryStep.IMMEDIATE_REASSURANCE: (
         "Hi {customer_name}, we noticed your payment for {item_name} didn't go "
-        "through. No worries — this is often a quick bank-side hiccup. Your item "
+        "through. No worries - this is often a quick bank-side hiccup. Your item "
         "is still reserved; feel free to simply retry your payment when ready."
     ),
     RecoveryStep.STRATEGIC_NUDGE: (
         "Hi {customer_name}, your {item_name} is still waiting for you! Use code "
-        "SAVE5 for 5% off when you complete your order — available for a "
+        "SAVE5 for 5% off when you complete your order - available for a "
         "limited time."
     ),
     RecoveryStep.FINAL_NOTICE: (
@@ -273,6 +273,6 @@ FALLBACK_MESSAGES = {
 
 def get_fallback_message(item_name: str, customer_name: str, step_number: int) -> str:
     """Deterministic, non-AI fallback so the escalation cadence never silently
-    breaks if Gemini is down — call this from tools.py on GenerationFailedError."""
+    breaks if Gemini is down - call this from tools.py on GenerationFailedError."""
     step = RecoveryStep(step_number)
     return FALLBACK_MESSAGES[step].format(customer_name=customer_name, item_name=item_name)

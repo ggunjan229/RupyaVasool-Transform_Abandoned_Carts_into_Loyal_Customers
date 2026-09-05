@@ -4,7 +4,7 @@ Primary compliance daemon: scans active cases every 30s, enforces stopping
 rules, re-validates payment status immediately before any dispatch, and
 executes the escalation ladder via app.agent.brain + app.agent.tools.
 
-Every decision — send, skip, halt — writes exactly one AgentAuditTrail row.
+Every decision - send, skip, halt - writes exactly one AgentAuditTrail row.
 Every run writes exactly one BatchRun row with measured totals.
 """
 
@@ -46,8 +46,8 @@ logger = logging.getLogger("worker")
 STEP_INTERVAL_SECONDS = getattr(settings, "STEP_INTERVAL_SECONDS", 45)
 
 SUBJECT_BY_STEP = {
-    1: "We're holding your order — quick payment hiccup",
-    2: "Still want it? Here's 5% off — code SAVE5",
+    1: "We're holding your order - quick payment hiccup",
+    2: "Still want it? Here's 5% off - code SAVE5",
     3: "Final notice: your reserved item is about to be released",
 }
 
@@ -127,25 +127,25 @@ def process_batch() -> None:
             try:
                 db.refresh(invoice)  # pick up any change from a concurrent webhook
 
-                # 2. STOPPING RULE — opt-out
+                # 2. STOPPING RULE - opt-out
                 if invoice.opt_out:
                     invoice.is_suppressed = True
                     _write_audit(
                         db, invoice, invoice.attempt_count, Channel.EMAIL,
-                        "N/A — customer opted out of communications.",
+                        "N/A - customer opted out of communications.",
                         ActionTaken.SKIPPED_OPT_OUT,
                     )
                     db.commit()
                     stopped_count += 1
                     continue
 
-                # 2. STOPPING RULE — max attempts exceeded
+                # 2. STOPPING RULE - max attempts exceeded
                 if invoice.attempt_count >= settings.MAX_RECOVERY_STAGE:
                     invoice.max_attempts_reached = True
                     invoice.is_suppressed = True
                     _write_audit(
                         db, invoice, invoice.attempt_count, Channel.EMAIL,
-                        "N/A — max recovery attempts reached; escalated to human review.",
+                        "N/A - max recovery attempts reached; escalated to human review.",
                         ActionTaken.ESCALATED_HUMAN,
                     )
                     db.commit()
@@ -153,7 +153,7 @@ def process_batch() -> None:
                     escalated_count += 1
                     continue
 
-                # 3. CONTINUOUS VALIDATION — re-verify status immediately
+                # 3. CONTINUOUS VALIDATION - re-verify status immediately
                 #    before any dispatch. If PAID, credit recovery and
                 #    break the sequence for THIS invoice.
                 if invoice.payment_status == PaymentStatus.PAID:
@@ -162,7 +162,7 @@ def process_batch() -> None:
                     recovered_amount += invoice.conversion_value_recovered
                     _write_audit(
                         db, invoice, invoice.attempt_count, Channel.EMAIL,
-                        "N/A — payment confirmed PAID prior to dispatch; agent halted.",
+                        "N/A - payment confirmed PAID prior to dispatch; agent halted.",
                         ActionTaken.HALTED_PAID,
                     )
                     db.commit()
@@ -172,7 +172,7 @@ def process_batch() -> None:
                 # Time gate: only step 1 fires immediately (attempt_count 0);
                 # steps 2/3 wait for the interval to elapse since last action.
                 if invoice.attempt_count > 0 and _seconds_since_update(invoice) < STEP_INTERVAL_SECONDS:
-                    continue  # not due yet — skip silently, no audit noise
+                    continue  # not due yet - skip silently, no audit noise
 
                 # 4. PROCESS: determine step, generate copy, dispatch, log
                 step_number = min(invoice.attempt_count + 1, 3)
@@ -188,7 +188,7 @@ def process_batch() -> None:
                         step_number=step_number,
                     )
                 except (GenerationFailedError, MissingAPIKeyError) as e:
-                    logger.warning(f"[worker] Gemini unavailable ({e}) — using fallback template.")
+                    logger.warning(f"[worker] Gemini unavailable ({e}) - using fallback template.")
                     message_body = get_fallback_message(
                         invoice.item_name, invoice.customer_name, step_number
                     )
@@ -208,7 +208,7 @@ def process_batch() -> None:
                 action = ActionTaken.SENT if result["status"] == "delivered" else ActionTaken.DISPATCH_FAILED
                 _write_audit(db, invoice, step_number, channel, message_body, action)
 
-                # Only advance the step counter on a successful send —
+                # Only advance the step counter on a successful send -
                 # a failed dispatch (e.g. malformed contact) should not
                 # silently burn an escalation attempt.
                 if result["status"] == "delivered":
@@ -237,7 +237,7 @@ def process_batch() -> None:
         db.commit()
 
         logger.info(
-            f"[batch {batch.id[:8]}] DONE — scanned={scanned} "
+            f"[batch {batch.id[:8]}] DONE - scanned={scanned} "
             f"recovered=₹{recovered_amount} at_risk=₹{at_risk_amount} "
             f"stopped={stopped_count} escalated={escalated_count}"
         )
@@ -271,7 +271,7 @@ def main() -> None:
         coalesce=True,                 # if one run is delayed, don't queue duplicates
     )
 
-    logger.info("AI Revenue Recovery worker started — polling every 30s. Press Ctrl+C to stop.")
+    logger.info("AI Revenue Recovery worker started - polling every 30s. Press Ctrl+C to stop.")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
