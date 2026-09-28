@@ -4,13 +4,15 @@ Primary compliance daemon: scans active cases every 30s, enforces stopping
 rules, re-validates payment status immediately before any dispatch, and
 executes the escalation ladder via app.agent.brain + app.agent.tools.
 
-Every decision - send, skip, halt - writes exactly one AgentAuditTrail row.
-Every run writes exactly one BatchRun row with measured totals.
+Every dispatch and policy stop writes an AgentAuditTrail row; time-based
+deferrals stay out of the log to avoid poll noise. Every run writes one
+BatchRun row with measured totals.
 """
 
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -32,7 +34,7 @@ from app.agent.brain import (
     GenerationFailedError,
     MissingAPIKeyError,
 )
-from app.agent.tools import send_recovery_email, send_recovery_whatsapp
+from app.agent.tools import send_recovery_email
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,15 +42,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("worker")
 
-# Demo-compressed cadence: production would gate on calendar days (Day 1 /
-# Day 3 / Day 5, per the original blueprint). For local testing we gate on
-# seconds so the full 3-step escalation is observable within minutes.
-STEP_INTERVAL_SECONDS = getattr(settings, "STEP_INTERVAL_SECONDS", 45)
+# Demo-compressed cadence: the local demo uses seconds; a production policy
+# should use a customer-local schedule with a measured and approved cadence.
+STEP_INTERVAL_SECONDS = settings.STEP_INTERVAL_SECONDS
 
 SUBJECT_BY_STEP = {
-    1: "We're holding your order - quick payment hiccup",
-    2: "Still want it? Here's 5% off - code SAVE5",
-    3: "Final notice: your reserved item is about to be released",
+    1: "A note about your checkout",
+    2: "Need a hand with checkout?",
+    3: "Final checkout reminder",
 }
 
 
@@ -57,6 +58,14 @@ SUBJECT_BY_STEP = {
 # ---------------------------------------------------------------------------
 
 def _failure_reason_for(invoice: Invoice) -> str:
+    if invoice.recovery_reason:
+        return {
+            "payment_issue": "customer reported a payment issue",
+            "shipping_cost": "customer is reviewing delivery cost",
+            "price_comparison": "customer is comparing prices",
+            "forgot": "customer got distracted before checkout",
+            "other": "customer asked for help with checkout",
+        }.get(invoice.recovery_reason, "checkout was not completed")
     if invoice.payment_status == PaymentStatus.FAILED:
         return "payment declined / bank timeout during checkout"
     return "checkout was started but never completed (cart abandoned)"
@@ -70,15 +79,15 @@ def _seconds_since_update(invoice: Invoice) -> float:
     return (now - updated).total_seconds()
 
 
-def _resolve_channel(invoice: Invoice, step_number: int) -> Channel:
-    """Step 2 prefers WhatsApp if the invoice has a usable phone number;
-    falls back to Email otherwise, since the current schema doesn't
-    guarantee a customer_phone column."""
-    if step_number == 2:
-        phone = getattr(invoice, "customer_phone", None)
-        if phone:
-            return Channel.WHATSAPP
-    return Channel.EMAIL
+def _in_quiet_hours() -> bool:
+    local_now = datetime.now(ZoneInfo(settings.DND_TIMEZONE))
+    hour = local_now.hour
+    start, end = settings.DND_HOURS_START, settings.DND_HOURS_END
+    if start == end:
+        return False
+    if start < end:
+        return start <= hour < end
+    return hour >= start or hour < end
 
 
 def _write_audit(db: Session, invoice: Invoice, step_number: int,
@@ -102,6 +111,13 @@ def process_batch() -> None:
     db.add(batch)
     db.commit()
     db.refresh(batch)
+    previous_batch = (
+        db.query(BatchRun.completed_at)
+        .filter(BatchRun.status == "COMPLETED", BatchRun.completed_at.isnot(None))
+        .order_by(BatchRun.completed_at.desc())
+        .first()
+    )
+    previous_completed_at = previous_batch[0] if previous_batch else None
 
     scanned = 0
     at_risk_amount = Decimal("0.00")
@@ -115,6 +131,8 @@ def process_batch() -> None:
             db.query(Invoice)
             .filter(Invoice.payment_status.in_([PaymentStatus.FAILED, PaymentStatus.PENDING]))
             .filter(Invoice.is_suppressed == False)  # noqa: E712
+            .order_by(Invoice.created_at.asc())
+            .limit(settings.BATCH_SIZE)
             .all()
         )
 
@@ -139,6 +157,29 @@ def process_batch() -> None:
                     stopped_count += 1
                     continue
 
+                # Give an unfinished checkout time to complete naturally
+                # before classifying a pending case as abandoned.
+                if (invoice.payment_status == PaymentStatus.PENDING
+                        and invoice.attempt_count == 0
+                        and _seconds_since_update(invoice) < settings.ABANDONMENT_GRACE_SECONDS):
+                    continue
+
+                # Never send recovery messages without explicit permission.
+                # Store one audit event, rather than repeating it every poll.
+                if not invoice.contact_consent:
+                    already_logged = db.query(AgentAuditTrail.id).filter(
+                        AgentAuditTrail.cart_id == invoice.id,
+                        AgentAuditTrail.action_taken == ActionTaken.SKIPPED_NO_CONSENT,
+                    ).first()
+                    if not already_logged:
+                        _write_audit(
+                            db, invoice, invoice.attempt_count, Channel.EMAIL,
+                            "N/A - no recovery-message consent was recorded; no message sent.",
+                            ActionTaken.SKIPPED_NO_CONSENT,
+                        )
+                        db.commit()
+                    continue
+
                 # 2. STOPPING RULE - max attempts exceeded
                 if invoice.attempt_count >= settings.MAX_RECOVERY_STAGE:
                     invoice.max_attempts_reached = True
@@ -154,12 +195,12 @@ def process_batch() -> None:
                     continue
 
                 # 3. CONTINUOUS VALIDATION - re-verify status immediately
-                #    before any dispatch. If PAID, credit recovery and
-                #    break the sequence for THIS invoice.
+                #    before any dispatch and stop if a payment arrived.
                 if invoice.payment_status == PaymentStatus.PAID:
-                    if invoice.conversion_value_recovered == 0:
+                    if invoice.recovered_by_agent and invoice.conversion_value_recovered == 0:
                         invoice.conversion_value_recovered = invoice.amount
-                    recovered_amount += invoice.conversion_value_recovered
+                    if invoice.recovered_by_agent:
+                        recovered_amount += invoice.conversion_value_recovered
                     _write_audit(
                         db, invoice, invoice.attempt_count, Channel.EMAIL,
                         "N/A - payment confirmed PAID prior to dispatch; agent halted.",
@@ -169,14 +210,19 @@ def process_batch() -> None:
                     stopped_count += 1
                     continue  # move to next invoice; do NOT process further
 
-                # Time gate: only step 1 fires immediately (attempt_count 0);
-                # steps 2/3 wait for the interval to elapse since last action.
+                # Failed payments can be acted on promptly; steps 2/3 wait
+                # for the interval to elapse since the last successful send.
                 if invoice.attempt_count > 0 and _seconds_since_update(invoice) < STEP_INTERVAL_SECONDS:
                     continue  # not due yet - skip silently, no audit noise
 
+                if _in_quiet_hours():
+                    continue  # retry on the next poll during the local daytime window
+
                 # 4. PROCESS: determine step, generate copy, dispatch, log
                 step_number = min(invoice.attempt_count + 1, 3)
-                channel = _resolve_channel(invoice, step_number)
+                # The storefront collects email consent only. Other channels
+                # stay disabled until they have their own consent flow.
+                channel = Channel.EMAIL
                 failure_reason = _failure_reason_for(invoice)
 
                 try:
@@ -193,17 +239,52 @@ def process_batch() -> None:
                         invoice.item_name, invoice.customer_name, step_number
                     )
 
-                if channel == Channel.WHATSAPP:
-                    result = send_recovery_whatsapp(
-                        phone=getattr(invoice, "customer_phone", ""),
-                        body=message_body,
+                # Generation can take time. Reload and re-check the payment,
+                # consent, suppression, and contact window immediately before
+                # dispatch so a concurrent payment or opt-out wins.
+                db.refresh(invoice)
+                if invoice.payment_status == PaymentStatus.PAID:
+                    if invoice.recovered_by_agent and invoice.conversion_value_recovered == 0:
+                        invoice.conversion_value_recovered = invoice.amount
+                    _write_audit(
+                        db, invoice, invoice.attempt_count, channel,
+                        "N/A - payment completed during message generation; dispatch cancelled.",
+                        ActionTaken.HALTED_PAID,
                     )
-                else:
-                    result = send_recovery_email(
-                        email=invoice.customer_email,
-                        subject=SUBJECT_BY_STEP[step_number],
-                        body=message_body,
+                    db.commit()
+                    stopped_count += 1
+                    continue
+                if invoice.opt_out or invoice.is_suppressed:
+                    invoice.is_suppressed = True
+                    _write_audit(
+                        db, invoice, invoice.attempt_count, channel,
+                        "N/A - recovery contact was suppressed before dispatch.",
+                        ActionTaken.SKIPPED_OPT_OUT if invoice.opt_out else ActionTaken.SKIPPED_SUPPRESSED,
                     )
+                    db.commit()
+                    stopped_count += 1
+                    continue
+                if not invoice.contact_consent:
+                    already_logged = db.query(AgentAuditTrail.id).filter(
+                        AgentAuditTrail.cart_id == invoice.id,
+                        AgentAuditTrail.action_taken == ActionTaken.SKIPPED_NO_CONSENT,
+                    ).first()
+                    if not already_logged:
+                        _write_audit(
+                            db, invoice, invoice.attempt_count, Channel.EMAIL,
+                            "N/A - recovery-message consent was revoked before dispatch.",
+                            ActionTaken.SKIPPED_NO_CONSENT,
+                        )
+                        db.commit()
+                    continue
+                if _in_quiet_hours():
+                    continue
+
+                result = send_recovery_email(
+                    email=invoice.customer_email,
+                    subject=SUBJECT_BY_STEP[step_number],
+                    body=message_body,
+                )
 
                 action = ActionTaken.SENT if result["status"] == "delivered" else ActionTaken.DISPATCH_FAILED
                 _write_audit(db, invoice, step_number, channel, message_body, action)
@@ -230,6 +311,19 @@ def process_batch() -> None:
         batch.completed_at = datetime.now(timezone.utc)
         batch.total_invoices_scanned = scanned
         batch.total_at_risk_amount = at_risk_amount
+        # Count explicit recovery-completion events since the previous batch;
+        # a normal paid checkout is never treated as agent-recovered.
+        recovery_events = db.query(AgentAuditTrail.cart_id).filter(
+            AgentAuditTrail.action_taken == ActionTaken.RECOVERED_BY_AGENT,
+            AgentAuditTrail.timestamp <= batch.completed_at,
+        )
+        if previous_completed_at is not None:
+            recovery_events = recovery_events.filter(AgentAuditTrail.timestamp > previous_completed_at)
+        recovered_ids = [row[0] for row in recovery_events.distinct().all()]
+        recovered_amount = sum(
+            (inv.amount for inv in db.query(Invoice).filter(Invoice.id.in_(recovered_ids)).all()),
+            Decimal("0.00"),
+        )
         batch.total_recovered_amount = recovered_amount
         batch.total_stopped_count = stopped_count
         batch.total_escalated_count = escalated_count
