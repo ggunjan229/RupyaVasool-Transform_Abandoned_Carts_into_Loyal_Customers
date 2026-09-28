@@ -1,234 +1,225 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ app_name }} - Control Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#12110e" />
+  <title>{{ app_name }} · Recovery Studio</title>
+  <style>
+    :root { color-scheme: dark; --bg:#12110e; --panel:#1b1915; --panel2:#222019; --line:#39352c; --ink:#f0eadc; --muted:#aaa392; --gold:#e4a943; --green:#88c996; --red:#ee8e7f; --blue:#a9c4ed; }
+    * { box-sizing:border-box } body { margin:0; background:radial-gradient(ellipse at 12% 0%,#252016 0,transparent 34rem),var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif }
+    button,input,select { font:inherit } button { cursor:pointer } button:focus-visible,input:focus-visible,select:focus-visible { outline:2px solid var(--gold); outline-offset:2px }
+    header { display:flex; justify-content:space-between; align-items:center; padding:22px clamp(18px,4vw,56px); border-bottom:1px solid var(--line) }
+    .brand { display:flex; gap:13px; align-items:center }.mark { width:38px;height:38px;border-radius:12px;background:var(--gold);color:#20170a;display:grid;place-items:center;font-weight:900;font-size:19px }
+    h1,h2,h3,p { margin-top:0 } h1 { margin:0;font-size:18px;letter-spacing:-.02em } .sub { margin:3px 0 0;color:var(--muted);font-size:12px } .live { color:var(--green);font-size:12px;display:flex;gap:8px;align-items:center }.dot { width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 13px #88c99688 }
+    main { max-width:1440px;margin:auto;padding:30px clamp(18px,4vw,56px) 60px }.eyebrow { color:var(--gold);text-transform:uppercase;letter-spacing:.13em;font-size:11px;font-weight:800;margin:0 0 8px } .hero { display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:25px }.hero h2 { margin:0;font-size:clamp(27px,4vw,42px);line-height:1.08;letter-spacing:-.045em }.hero-copy { max-width:640px;color:#c8c1b2;margin:10px 0 0 }
+    .metrics { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px }.metric,.panel { background:linear-gradient(145deg,#211f1a,#191815);border:1px solid var(--line);border-radius:15px }.metric { padding:17px 18px }.metric-label { color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.09em }.metric-value { font-size:27px;font-weight:750;letter-spacing:-.04em;margin-top:5px }.metric-note { color:#827c6f;font-size:11px;margin-top:3px }.green { color:var(--green) }.gold { color:var(--gold) }
+    .layout { display:grid;grid-template-columns:minmax(310px,.9fr) minmax(480px,1.5fr);gap:18px;align-items:start }.panel { padding:20px }.panel-head { display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:17px }.panel h3 { margin:0;font-size:16px;letter-spacing:-.02em }.panel-desc { color:var(--muted);font-size:12px;margin:5px 0 0 }.tag { border:1px solid #615033;background:#332714;color:#f1c36f;border-radius:20px;padding:4px 9px;font-size:10px;white-space:nowrap }
+    .fields { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px }.field { display:grid;gap:5px }.field label { font-size:11px;color:var(--muted) }.field input,.field select { width:100%;background:#13120f;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:13px }.consent { display:flex;gap:9px;align-items:flex-start;font-size:11px;color:#c2bcaf;margin:0 0 15px }.consent input { accent-color:var(--gold);margin-top:3px }
+    .products { display:grid;gap:9px }.product { display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid #343128;background:#201e19;padding:12px;border-radius:11px }.product-name { font-size:13px;font-weight:650 }.product-price { color:#c5bdad;font-size:12px;margin-top:3px }.primary,.secondary,.subtle { border:0;border-radius:8px;padding:8px 12px;font-weight:650;font-size:12px;transition:transform .15s,background .15s }.primary { background:var(--gold);color:#241b0e }.primary:hover { background:#f0bb62;transform:translateY(-1px) }.secondary { color:var(--ink);background:#353128;border:1px solid #514b3e }.secondary:hover { background:#413b30 }.subtle { color:#d9b878;background:transparent;padding:6px 8px }.subtle:hover { background:#30291e }
+    .checkout { display:none;margin-top:13px;padding:14px;border:1px solid #665338;background:#2a2318;border-radius:11px }.checkout.active { display:block }.checkout-top { display:flex;justify-content:space-between;gap:10px;align-items:start }.checkout-name { font-weight:700;font-size:13px }.checkout-meta { color:#c2b79f;font-size:11px;margin-top:3px }.checkout-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px }
+    .right-stack { display:grid;gap:18px }.table-wrap { overflow:auto;border:1px solid var(--line);border-radius:10px } table { border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap } th { color:#aaa392;background:#26231d;text-align:left;font-weight:600;padding:10px 11px;position:sticky;top:0 } td { padding:9px 11px;border-top:1px solid #302d26;color:#ded8ca } .status { font-size:10px;font-weight:750;letter-spacing:.04em }.status.PAID { color:var(--green) }.status.FAILED { color:var(--red) }.status.PENDING { color:var(--gold) }.empty { color:var(--muted);text-align:center;padding:18px }
+    .audit { max-height:250px;overflow:auto;display:grid;gap:8px }.audit-item { border-left:2px solid #8f6e3e;padding:7px 10px;background:#211f1a;border-radius:0 8px 8px 0 }.audit-top { display:flex;justify-content:space-between;gap:8px;color:#d9b878;font-size:10px;font-weight:700 }.audit-body { font-size:11px;color:#d8d1c4;margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere }.audit-action { color:var(--muted);font-size:10px;margin-top:3px }
+    .batch-list { display:grid;gap:8px }.batch-row { display:grid;grid-template-columns:minmax(120px,1fr) repeat(3,minmax(90px,.7fr));gap:10px;align-items:center;padding:10px 12px;border:1px solid #343128;background:#201e19;border-radius:9px;font-size:11px }.batch-id { font-weight:700;color:#d9b878 }.batch-time,.batch-label { color:var(--muted);font-size:10px }.batch-value { font-size:12px;font-weight:700 }.batch-status { font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:.08em }
+    dialog { background:#1d1b16;color:var(--ink);border:1px solid #665338;border-radius:16px;padding:0;width:min(480px,calc(100vw - 28px));box-shadow:0 25px 100px #000a } dialog::backdrop { background:#080806bd;backdrop-filter:blur(3px) }.modal { padding:23px }.modal h3 { font-size:21px;margin:0 0 7px;letter-spacing:-.03em }.modal p { color:#bcb5a8;font-size:13px;margin-bottom:16px }.reason-list { display:grid;gap:8px }.reason-choice { display:flex;gap:10px;align-items:center;border:1px solid #3c382f;background:#24221c;border-radius:9px;padding:10px;font-size:12px;cursor:pointer }.reason-choice:hover { border-color:#977743 }.reason-choice input { accent-color:var(--gold) }.recommendation { display:none;padding:12px;background:#302718;border:1px solid #705933;border-radius:9px;color:#ead9b8;font-size:12px;margin-top:13px }.recommendation.show { display:block }.modal-actions { display:flex;justify-content:space-between;gap:10px;margin-top:17px }.toast { position:fixed;bottom:20px;right:20px;background:#2e382d;border:1px solid #547653;padding:11px 15px;border-radius:9px;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;font-size:12px;max-width:min(360px,calc(100vw - 40px));z-index:5 }.toast.show { opacity:1;transform:none }
+    footer { max-width:1440px;margin:0 auto;padding:0 clamp(18px,4vw,56px) 26px;color:#777164;font-size:10px }
+    @media(max-width:950px) { .layout { grid-template-columns:1fr }.metrics { grid-template-columns:repeat(2,1fr) } } @media(max-width:560px) { header { padding:16px }.hero { align-items:flex-start;flex-direction:column }.metrics { gap:8px }.metric { padding:13px }.metric-value { font-size:22px }.fields { grid-template-columns:1fr }.panel { padding:15px }.product { align-items:flex-start;flex-direction:column }.product button { width:100% } }
+  </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen">
-
-    <header class="border-b border-gray-800 px-6 py-4">
-        <h1 class="text-xl font-bold tracking-tight">{{ app_name }}</h1>
-        <p class="text-sm text-gray-500">Detect → Diagnose → Recover, with a compliant audit trail</p>
-    </header>
-
-    <main class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
-
-        <!-- ================= LEFT PANEL: STORE SIMULATOR ================= -->
-        <section class="bg-gray-900 rounded-xl p-5 border border-gray-800">
-            <h2 class="text-lg font-semibold mb-1">🛍️ Store Simulator</h2>
-            <p class="text-xs text-gray-500 mb-4">Trigger real checkout events that the recovery agent will detect.</p>
-
-            <div id="product-list" class="space-y-4">
-                <!-- product cards injected below -->
-            </div>
+<body>
+  <header>
+    <div class="brand"><div class="mark" aria-hidden="true">₹</div><div><h1>{{ app_name }}</h1><p class="sub">Revenue Recovery Studio · Local demo</p></div></div>
+    <div class="live"><span class="dot"></span> Agent monitoring</div>
+  </header>
+  <main>
+    <section class="hero">
+      <div><p class="eyebrow">Recovery operations</p><h2>Find revenue that’s<br/>slipping away.</h2><p class="hero-copy">A bounded recovery agent listens for checkout friction, offers a relevant next step, and records every decision. Customers stay in control.</p></div>
+      <span class="tag">Consent-first · 3-message limit</span>
+    </section>
+    <section class="metrics" aria-label="Recovery metrics">
+      <div class="metric"><div class="metric-label">At-risk checkout value</div><div class="metric-value gold" id="metric-risk">₹0.00</div><div class="metric-note">Open and failed checkouts</div></div>
+      <div class="metric"><div class="metric-label">Recovered by agent</div><div class="metric-value green" id="metric-recovered">₹0.00</div><div class="metric-note">Completed through a recovery action</div></div>
+      <div class="metric"><div class="metric-label">Completed organically</div><div class="metric-value" id="metric-organic">₹0.00</div><div class="metric-note">Purchases without recovery attribution</div></div>
+      <div class="metric"><div class="metric-label">Open cases</div><div class="metric-value" id="metric-open">0</div><div class="metric-note">Payments still pending or failed</div></div>
+    </section>
+    <section class="layout">
+      <section class="panel" aria-labelledby="store-title">
+        <div class="panel-head"><div><p class="eyebrow">Customer journey</p><h3 id="store-title">Storefront simulator</h3><p class="panel-desc">Create a checkout, then try the on-site recovery prompt.</p></div><span class="tag">Demo store</span></div>
+        <div class="fields">
+          <div class="field"><label for="customer-name">Customer name</label><input id="customer-name" maxlength="80" value="Alex Morgan" autocomplete="name" /></div>
+          <div class="field"><label for="customer-email">Email address</label><input id="customer-email" type="email" maxlength="254" value="alex@example.com" autocomplete="email" /></div>
+        </div>
+        <label class="consent"><input id="contact-consent" type="checkbox"/><span>I agree to receive up to three checkout recovery messages by email. You can opt out from the case list at any time.</span></label>
+        <div class="products" id="product-list"></div>
+        <div class="checkout" id="checkout-card" aria-live="polite">
+          <div class="checkout-top"><div><div class="checkout-name" id="checkout-product">No active checkout</div><div class="checkout-meta" id="checkout-info"></div></div><button class="subtle" id="close-checkout" type="button" aria-label="Close checkout">Close</button></div>
+          <div class="checkout-actions"><button class="primary" id="complete-checkout" type="button">Complete purchase</button><button class="secondary" id="leave-checkout" type="button">Leave checkout</button><button class="secondary" id="fail-checkout" type="button">Simulate payment issue</button></div>
+        </div>
+      </section>
+      <div class="right-stack">
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Live outcomes</p><h3>Checkout cases</h3><p class="panel-desc">Organic payments and agent-assisted recoveries are tracked separately.</p></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Customer</th><th>Product</th><th>Value</th><th>Status</th><th>Agent</th><th>Action</th></tr></thead><tbody id="cart-table-body"><tr><td class="empty" colspan="6">No checkouts yet.</td></tr></tbody></table></div>
         </section>
-
-        <!-- ================= RIGHT PANEL: ANALYTICS + AUDIT ================= -->
-        <section class="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col">
-            <h2 class="text-lg font-semibold mb-4">📊 Agent Analytics & Compliance Dashboard</h2>
-
-            <!-- Metric cards -->
-            <div class="grid grid-cols-2 gap-4 mb-5">
-                <div class="bg-red-950/40 border border-red-900 rounded-lg p-4">
-                    <p class="text-xs text-red-400 uppercase tracking-wide">Total Lost Revenue</p>
-                    <p id="metric-lost" class="text-2xl font-bold text-red-300 mt-1">₹0.00</p>
-                </div>
-                <div class="bg-green-950/40 border border-green-900 rounded-lg p-4">
-                    <p class="text-xs text-green-400 uppercase tracking-wide">Total Recovered Revenue</p>
-                    <p id="metric-recovered" class="text-2xl font-bold text-green-300 mt-1">₹0.00</p>
-                </div>
-            </div>
-
-            <!-- Cart list -->
-            <div class="mb-5">
-                <h3 class="text-sm font-semibold text-gray-400 mb-2">Processed Carts</h3>
-                <div class="border border-gray-800 rounded-lg overflow-hidden max-h-56 overflow-y-auto">
-                    <table class="w-full text-xs">
-                        <thead class="bg-gray-800 text-gray-400 sticky top-0">
-                            <tr>
-                                <th class="text-left px-3 py-2">Customer</th>
-                                <th class="text-left px-3 py-2">Item</th>
-                                <th class="text-left px-3 py-2">Amount</th>
-                                <th class="text-left px-3 py-2">Status</th>
-                                <th class="text-left px-3 py-2">Recovered</th>
-                                <th class="text-left px-3 py-2"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="cart-table-body">
-                            <tr><td colspan="6" class="px-3 py-4 text-center text-gray-600">No carts yet.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Audit trail live feed -->
-            <div class="flex-1 min-h-0">
-                <h3 class="text-sm font-semibold text-gray-400 mb-2">Agent Audit Trail (Live Feed)</h3>
-                <div id="audit-feed" class="border border-gray-800 rounded-lg p-3 space-y-2 max-h-64 overflow-y-auto bg-black/30">
-                    <p class="text-xs text-gray-600">No agent actions logged yet. Run the worker to populate this feed.</p>
-                </div>
-            </div>
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Measured outcomes</p><h3>Recent recovery batches</h3><p class="panel-desc">Explicit agent-assisted purchases recorded since the prior worker run.</p></div><span class="tag">Batch log</span></div>
+          <div class="batch-list" id="batch-feed"><div class="empty">Start the worker to create the first batch summary.</div></div>
         </section>
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Accountability</p><h3>Decision audit trail</h3><p class="panel-desc">Every send, stop, and recovery decision is recorded.</p></div><span class="tag">Live</span></div>
+          <div class="audit" id="audit-feed"><div class="empty">No agent actions recorded yet.</div></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer>Demo mode: messages are simulated in the worker terminal. No real payments or customer communications are sent.</footer>
+  <dialog id="recovery-dialog" aria-labelledby="dialog-title">
+    <form class="modal" method="dialog" id="recovery-form">
+      <p class="eyebrow">A little help?</p><h3 id="dialog-title">What held you back?</h3><p>Choose a reason if you’d like. We’ll suggest a useful next step; you can skip this and return to your cart.</p>
+      <div class="reason-list">
+        <label class="reason-choice"><input type="radio" name="reason" value="payment_issue"/><span>Payment didn’t work</span></label>
+        <label class="reason-choice"><input type="radio" name="reason" value="shipping_cost"/><span>Delivery cost or timing</span></label>
+        <label class="reason-choice"><input type="radio" name="reason" value="price_comparison"/><span>I’m comparing prices</span></label>
+        <label class="reason-choice"><input type="radio" name="reason" value="forgot"/><span>I got distracted</span></label>
+        <label class="reason-choice"><input type="radio" name="reason" value="other"/><span>Something else</span></label>
+      </div>
+      <div class="recommendation" id="recommendation" role="status"></div>
+      <div class="modal-actions"><button class="subtle" id="skip-reason" type="button">Skip and leave</button><div><button class="secondary" id="get-suggestion" type="button">Show suggestion</button> <button class="primary" id="return-to-cart" type="button" hidden>Complete demo purchase</button></div></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    const PRODUCTS = [
+      { name: "Everyday Leather Tote", price: 2499.00 },
+      { name: "Studio Wireless Headphones", price: 7499.00 },
+      { name: "Active Smartwatch", price: 5299.00 },
+    ];
+    const money = value => `₹${Number(value || 0).toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    const byId = id => document.getElementById(id);
+    let activeCartId = null;
+    let toastTimer;
 
-    </main>
-
-    <script>
-        const PRODUCTS = [
-            { name: "Premium Leather Jacket", price: 200.00 },
-            { name: "Wireless Noise-Cancelling Headphones", price: 149.00 },
-            { name: "Smart Fitness Watch", price: 89.50 },
-        ];
-
-        const STATUS_COLORS = {
-            PENDING: "text-yellow-400",
-            FAILED: "text-red-400",
-            PAID: "text-green-400",
-        };
-
-        function renderProducts() {
-            const container = document.getElementById("product-list");
-            container.innerHTML = PRODUCTS.map((p, idx) => `
-                <div class="bg-gray-800/60 rounded-lg p-4 flex items-center justify-between">
-                    <div>
-                        <p class="font-medium">${p.name}</p>
-                        <p class="text-sm text-gray-400">₹${p.price.toFixed(2)}</p>
-                        <p id="status-${idx}" class="text-xs text-gray-500 mt-1"></p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button onclick="simulateAbandon(${idx})"
-                            class="text-xs bg-yellow-700/30 hover:bg-yellow-700/50 text-yellow-300 px-3 py-1.5 rounded-md transition">
-                            Simulate Abandoned Cart
-                        </button>
-                        <button onclick="simulateFailure(${idx})"
-                            class="text-xs bg-red-700/30 hover:bg-red-700/50 text-red-300 px-3 py-1.5 rounded-md transition">
-                            Simulate Payment Failure
-                        </button>
-                    </div>
-                </div>
-            `).join("");
-        }
-
-        function setStatus(idx, msg) {
-            const el = document.getElementById(`status-${idx}`);
-            if (el) el.textContent = msg;
-        }
-
-        async function createCart(idx) {
-            const product = PRODUCTS[idx];
-            const res = await fetch("/api/checkout/initiate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customer_name: `Guest_${Math.floor(Math.random() * 9000 + 1000)}`,
-                    customer_email: `guest${Date.now()}@example.com`,
-                    item_name: product.name,
-                    amount: product.price,
-                }),
-            });
-            if (!res.ok) throw new Error(`initiate failed: ${res.status}`);
-            const data = await res.json();
-            return data.data.id;
-        }
-
-        async function simulateAbandon(idx) {
-            try {
-                setStatus(idx, "Creating cart...");
-                const cartId = await createCart(idx);
-                setStatus(idx, `Cart ${cartId.slice(0, 8)} created - abandoned (PENDING).`);
-                refreshDashboard();
-            } catch (err) {
-                setStatus(idx, `Error: ${err.message}`);
-            }
-        }
-
-        async function simulateFailure(idx) {
-            try {
-                setStatus(idx, "Creating cart...");
-                const cartId = await createCart(idx);
-                setStatus(idx, "Triggering payment failure...");
-                const res = await fetch("/api/checkout/simulate-failure", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cart_id: cartId }),
-                });
-                if (!res.ok) throw new Error(`simulate-failure failed: ${res.status}`);
-                setStatus(idx, `Cart ${cartId.slice(0, 8)} FAILED. Agent will pick this up.`);
-                refreshDashboard();
-            } catch (err) {
-                setStatus(idx, `Error: ${err.message}`);
-            }
-        }
-
-        async function markPaid(cartId) {
-            try {
-                const res = await fetch("/api/checkout/simulate-success", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cart_id: cartId }),
-                });
-                if (!res.ok) throw new Error(`simulate-success failed: ${res.status}`);
-                refreshDashboard();
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        function fmtMoney(v) {
-            return `₹${parseFloat(v).toFixed(2)}`;
-        }
-
-        async function refreshDashboard() {
-            try {
-                const res = await fetch("/api/dashboard");
-                if (!res.ok) throw new Error(`dashboard fetch failed: ${res.status}`);
-                const data = await res.json();
-
-                document.getElementById("metric-lost").textContent = fmtMoney(data.totals.total_lost);
-                document.getElementById("metric-recovered").textContent = fmtMoney(data.totals.total_recovered);
-
-                const tbody = document.getElementById("cart-table-body");
-                if (!data.invoices.length) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-gray-600">No carts yet.</td></tr>`;
-                } else {
-                    tbody.innerHTML = data.invoices.map(inv => `
-                        <tr class="border-t border-gray-800">
-                            <td class="px-3 py-2">${inv.customer_name}</td>
-                            <td class="px-3 py-2">${inv.item_name}</td>
-                            <td class="px-3 py-2">${fmtMoney(inv.amount)}</td>
-                            <td class="px-3 py-2 font-medium ${STATUS_COLORS[inv.payment_status] || 'text-gray-400'}">${inv.payment_status}</td>
-                            <td class="px-3 py-2">${fmtMoney(inv.conversion_value_recovered)}</td>
-                            <td class="px-3 py-2">
-                                ${inv.payment_status !== "PAID"
-                                    ? `<button onclick="markPaid('${inv.id}')" class="text-[10px] bg-green-800/40 hover:bg-green-800/60 text-green-300 px-2 py-1 rounded">Mark Paid</button>`
-                                    : ""}
-                            </td>
-                        </tr>
-                    `).join("");
-                }
-
-                const feed = document.getElementById("audit-feed");
-                if (!data.audit_logs.length) {
-                    feed.innerHTML = `<p class="text-xs text-gray-600">No agent actions logged yet. Run the worker to populate this feed.</p>`;
-                } else {
-                    feed.innerHTML = data.audit_logs.map(log => `
-                        <div class="text-xs border-l-2 border-indigo-700 pl-2">
-                            <span class="text-indigo-300 font-medium">Step ${log.step_number} · ${log.channel_used}</span>
-                            <span class="text-gray-500"> - ${new Date(log.timestamp).toLocaleTimeString()}</span>
-                            <p class="text-gray-300">${log.content_sent}</p>
-                            <p class="text-gray-500">Action: ${log.action_taken}</p>
-                        </div>
-                    `).join("");
-                }
-            } catch (err) {
-                console.error("Dashboard refresh failed:", err);
-            }
-        }
-
-        renderProducts();
-        refreshDashboard();
-        setInterval(refreshDashboard, 4000); // poll every 4s for live updates
-    </script>
+    function showToast(message) {
+      const toast = byId("toast"); toast.textContent = message; toast.classList.add("show");
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+    async function api(url, options={}) {
+      const response = await fetch(url, {headers:{"Content-Type":"application/json"}, ...options});
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `Request failed (${response.status})`);
+      return data;
+    }
+    function renderProducts() {
+      const host = byId("product-list"); host.replaceChildren();
+      PRODUCTS.forEach(product => {
+        const row = document.createElement("article"); row.className = "product";
+        const description = document.createElement("div");
+        const name = document.createElement("div"); name.className = "product-name"; name.textContent = product.name;
+        const price = document.createElement("div"); price.className = "product-price"; price.textContent = money(product.price);
+        description.append(name, price);
+        const button = document.createElement("button"); button.className = "secondary"; button.textContent = "Start checkout";
+        button.addEventListener("click", () => startCheckout(product)); row.append(description, button); host.append(row);
+      });
+    }
+    async function startCheckout(product) {
+      try {
+        const data = await api("/api/checkout/initiate", {method:"POST", body:JSON.stringify({
+          customer_name:byId("customer-name").value.trim(), customer_email:byId("customer-email").value.trim(),
+          item_name:product.name, amount:product.price, contact_consent:byId("contact-consent").checked,
+        })});
+        activeCartId = data.data.id;
+        byId("checkout-product").textContent = product.name;
+        byId("checkout-info").textContent = `${money(product.price)} · Checkout ${activeCartId.slice(0,8)}`;
+        byId("checkout-card").classList.add("active");
+        await refreshDashboard(); showToast("Checkout started. You can complete it or try the recovery prompt.");
+      } catch (error) { showToast(error.message); }
+    }
+    async function markPaid(cartId, recovered=false) {
+      try {
+        if (recovered) await api("/api/checkout/simulate-recovery", {method:"POST", body:JSON.stringify({cart_id:cartId, accepted_offer:true})});
+        else await api("/api/checkout/simulate-success", {method:"POST", body:JSON.stringify({cart_id:cartId})});
+        if (cartId === activeCartId) { activeCartId = null; byId("checkout-card").classList.remove("active"); }
+        showToast(recovered ? "Agent-assisted recovery recorded." : "Organic purchase recorded."); await refreshDashboard();
+      } catch (error) { showToast(error.message); }
+    }
+    async function simulateFailure() {
+      if (!activeCartId) return;
+      try {
+        await api("/api/checkout/simulate-failure", {method:"POST", body:JSON.stringify({cart_id:activeCartId})});
+        await refreshDashboard(); showToast("Payment issue recorded. The recovery prompt is ready."); openRecovery();
+      } catch (error) { showToast(error.message); }
+    }
+    function openRecovery() {
+      if (!activeCartId) return showToast("Start a checkout first.");
+      byId("recommendation").textContent = ""; byId("recommendation").classList.remove("show");
+      byId("return-to-cart").hidden = true; byId("recovery-dialog").showModal();
+    }
+    async function getSuggestion() {
+      if (!activeCartId) return;
+      const selected = document.querySelector('input[name="reason"]:checked');
+      if (!selected) return showToast("Choose a reason, or skip and leave.");
+      try {
+        const data = await api(`/api/carts/${encodeURIComponent(activeCartId)}/reason`, {method:"POST", body:JSON.stringify({reason:selected.value})});
+        byId("recommendation").textContent = `For ${data.item_name}: ${data.suggestion}`;
+        byId("recommendation").classList.add("show"); byId("return-to-cart").hidden = false;
+      } catch (error) { showToast(error.message); }
+    }
+    function addCell(row, value, className="") { const cell=document.createElement("td"); cell.textContent=value; if(className) cell.className=className; row.append(cell); return cell; }
+    async function refreshDashboard() {
+      try {
+        const data = await api("/api/dashboard");
+        byId("metric-risk").textContent = money(data.totals.total_at_risk);
+        byId("metric-recovered").textContent = money(data.totals.total_recovered);
+        byId("metric-organic").textContent = money(data.totals.total_organic);
+        byId("metric-open").textContent = String(data.totals.open_cases);
+        const tbody=byId("cart-table-body"); tbody.replaceChildren();
+        if (!data.invoices.length) { const row=document.createElement("tr"),cell=document.createElement("td"); cell.className="empty";cell.colSpan=6;cell.textContent="No checkouts yet.";row.append(cell);tbody.append(row); }
+        data.invoices.forEach(invoice => {
+          const row=document.createElement("tr"); addCell(row,invoice.customer_name);addCell(row,invoice.item_name);addCell(row,money(invoice.amount));
+          addCell(row,invoice.payment_status,`status ${invoice.payment_status}`);
+          addCell(row,invoice.recovered_by_agent ? "Assisted" : (invoice.payment_status === "PAID" ? "Organic" : "—"));
+          const action=addCell(row,"");
+          if (invoice.payment_status !== "PAID") {
+            const button=document.createElement("button");button.className="subtle";button.textContent="Mark paid";button.setAttribute("aria-label",`Mark ${invoice.item_name} paid organically`);button.addEventListener("click",()=>markPaid(invoice.id));action.append(button);
+            if (!invoice.opt_out) { const optOut=document.createElement("button");optOut.className="subtle";optOut.textContent="Opt out";optOut.setAttribute("aria-label",`Opt out of recovery messages for ${invoice.item_name}`);optOut.addEventListener("click",async()=>{try{await api(`/api/carts/${encodeURIComponent(invoice.id)}/opt-out`,{method:"POST"});showToast("Recovery messages stopped for this checkout.");await refreshDashboard();}catch(error){showToast(error.message);}});action.append(optOut); }
+          }
+          tbody.append(row);
+        });
+        const feed=byId("audit-feed");feed.replaceChildren();
+        if (!data.audit_logs.length) { const empty=document.createElement("div");empty.className="empty";empty.textContent="No agent actions recorded yet.";feed.append(empty); }
+        data.audit_logs.forEach(log => {
+          const item=document.createElement("article");item.className="audit-item";
+          const top=document.createElement("div");top.className="audit-top";
+          const left=document.createElement("span");left.textContent=log.step_number===0?`Customer signal · ${log.channel_used}`:`Step ${log.step_number} · ${log.channel_used}`;
+          const time=document.createElement("time");time.dateTime=log.timestamp;time.textContent=new Date(log.timestamp).toLocaleString();top.append(left,time);
+          const body=document.createElement("p");body.className="audit-body";body.textContent=log.content_sent;
+          const action=document.createElement("div");action.className="audit-action";action.textContent=`Decision: ${log.action_taken}`;
+          item.append(top,body,action);feed.append(item);
+        });
+        const batches=byId("batch-feed");batches.replaceChildren();
+        if (!data.batch_runs.length) { const empty=document.createElement("div");empty.className="empty";empty.textContent="Start the worker to create the first batch summary.";batches.append(empty); }
+        data.batch_runs.forEach(batch => {
+          const row=document.createElement("article");row.className="batch-row";
+          const identity=document.createElement("div"),id=document.createElement("div"),time=document.createElement("div");
+          id.className="batch-id";id.textContent=`Batch ${batch.id.slice(0,8)}`;
+          time.className="batch-time";time.textContent=`${new Date(batch.started_at).toLocaleString()} · ${batch.status}`;identity.append(id,time);
+          const scanned=document.createElement("div"),risk=document.createElement("div"),recovered=document.createElement("div");
+          scanned.textContent=`${batch.cases_scanned} scanned · ${batch.stopped} stopped · ${batch.escalated} escalated`;
+          risk.textContent=`At risk ${money(batch.at_risk)}`;
+          recovered.textContent=`Recovered ${money(batch.recovered)}`;recovered.className="batch-value green";
+          row.append(identity,scanned,risk,recovered);batches.append(row);
+        });
+      } catch (error) { console.error("Dashboard refresh failed",error); }
+    }
+    byId("complete-checkout").addEventListener("click",()=>activeCartId&&markPaid(activeCartId));
+    byId("leave-checkout").addEventListener("click",openRecovery);
+    byId("fail-checkout").addEventListener("click",simulateFailure);
+    byId("close-checkout").addEventListener("click",()=>{activeCartId=null;byId("checkout-card").classList.remove("active");});
+    byId("get-suggestion").addEventListener("click",getSuggestion);
+    byId("return-to-cart").addEventListener("click",()=>{byId("recovery-dialog").close();activeCartId&&markPaid(activeCartId,true);});
+    byId("skip-reason").addEventListener("click",()=>{byId("recovery-dialog").close();showToast("No problem. Your cart remains saved in this demo.");});
+    byId("recovery-form").addEventListener("submit",event=>event.preventDefault());
+    renderProducts(); refreshDashboard(); setInterval(refreshDashboard,5000);
+  </script>
 </body>
 </html>
