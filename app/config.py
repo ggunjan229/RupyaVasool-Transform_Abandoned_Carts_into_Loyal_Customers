@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./revenue_recovery.db"
 
     # --- Gemini ---
-    GEMINI_API_KEY: str
+    # Optional: deterministic fallback copy keeps the demo usable without a key.
+    GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.6-flash"  # fast + cheap for batch diagnosis
 
     # --- Escalation cadence (days since last action) ---
@@ -30,11 +31,14 @@ class Settings(BaseSettings):
     # --- Worker ---
     WORKER_POLL_INTERVAL_SECONDS: int = 30
     BATCH_SIZE: int = 50
+    ABANDONMENT_GRACE_SECONDS: int = 60
+    STEP_INTERVAL_SECONDS: int = 60
 
     # --- Compliance ---
     ENABLE_OPT_OUT_CHECK: bool = True
     DND_HOURS_START: int = 21  # no outbound contact 9pm–8am
     DND_HOURS_END: int = 8
+    DND_TIMEZONE: str = "Asia/Kolkata"
 
     model_config = SettingsConfigDict(
         env_file=".env",
