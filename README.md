@@ -1,4 +1,4 @@
-# RupyaVasool — Revenue Recovery
+# RupyaVasool - Transform Abandoned Carts into Loyal Customers
 
 An interactive checkout-recovery demo. It shows how a store can respond to payment issues and abandoned carts with a customer-selected reason, a bounded suggestion, opt-out controls, and separate organic versus assisted outcomes.
 
