@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#12110e" />
-  <title>{{ app_name }} · Recovery Studio</title>
+  <title>RupyaVasool · Revenue Recovery Studio</title>
   <style>
     :root { color-scheme: dark; --bg:#12110e; --panel:#1b1915; --panel2:#222019; --line:#39352c; --ink:#f0eadc; --muted:#aaa392; --gold:#e4a943; --green:#88c996; --red:#ee8e7f; --blue:#a9c4ed; }
     * { box-sizing:border-box } body { margin:0; background:radial-gradient(ellipse at 12% 0%,#252016 0,transparent 34rem),var(--bg); color:var(--ink); font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif }
@@ -28,13 +28,13 @@
 </head>
 <body>
   <header>
-    <div class="brand"><div class="mark" aria-hidden="true">₹</div><div><h1>{{ app_name }}</h1><p class="sub"> Transform Abandoned Carts into Loyal Customers </p></div></div>
-    <div class="live"><span class="dot"></span> Agent monitoring</div>
+    <div class="brand"><div class="mark" aria-hidden="true">₹</div><div><h1>RupyaVasool</h1><p class="sub">Revenue Recovery Studio · Browser demo</p></div></div>
+    <div class="live"><span class="dot"></span> Browser-only simulation <button class="subtle" id="reset-demo" type="button">Reset demo data</button></div>
   </header>
   <main>
     <section class="hero">
       <div><p class="eyebrow">Recovery operations</p><h2>Find revenue that’s<br/>slipping away.</h2><p class="hero-copy">A bounded recovery agent listens for checkout friction, offers a relevant next step, and records every decision. Customers stay in control.</p></div>
-      <span class="tag">Consent-first · 3-message limit</span>
+      <span class="tag">Interactive browser demo</span>
     </section>
     <section class="metrics" aria-label="Recovery metrics">
       <div class="metric"><div class="metric-label">At-risk checkout value</div><div class="metric-value gold" id="metric-risk">₹0.00</div><div class="metric-note">Open and failed checkouts</div></div>
@@ -47,9 +47,9 @@
         <div class="panel-head"><div><p class="eyebrow">Customer journey</p><h3 id="store-title">Storefront simulator</h3><p class="panel-desc">Create a checkout, then try the on-site recovery prompt.</p></div><span class="tag">Demo store</span></div>
         <div class="fields">
           <div class="field"><label for="customer-name">Customer name</label><input id="customer-name" maxlength="80" value="Alex Morgan" autocomplete="name" /></div>
-          <div class="field"><label for="customer-email">Email address</label><input id="customer-email" type="email" maxlength="254" value="alex@example.com" autocomplete="email" /></div>
+          <div class="field"><label for="customer-email">Demo email</label><input id="customer-email" type="email" maxlength="254" value="alex@example.test" autocomplete="off" /></div>
         </div>
-        <label class="consent"><input id="contact-consent" type="checkbox"/><span>I agree to receive up to three checkout recovery messages by email. You can opt out from the case list at any time.</span></label>
+        <label class="consent"><input id="contact-consent" type="checkbox"/><span>Record email recovery consent for this demo (no email is sent).</span></label>
         <div class="products" id="product-list"></div>
         <div class="checkout" id="checkout-card" aria-live="polite">
           <div class="checkout-top"><div><div class="checkout-name" id="checkout-product">No active checkout</div><div class="checkout-meta" id="checkout-info"></div></div><button class="subtle" id="close-checkout" type="button" aria-label="Close checkout">Close</button></div>
@@ -63,7 +63,7 @@
         </section>
         <section class="panel">
           <div class="panel-head"><div><p class="eyebrow">Measured outcomes</p><h3>Recent recovery batches</h3><p class="panel-desc">Explicit agent-assisted purchases recorded since the prior worker run.</p></div><span class="tag">Batch log</span></div>
-          <div class="batch-list" id="batch-feed"><div class="empty">Start the worker to create the first batch summary.</div></div>
+          <div class="batch-list" id="batch-feed"><div class="empty">Batch summaries are available in the local FastAPI worker version.</div></div>
         </section>
         <section class="panel">
           <div class="panel-head"><div><p class="eyebrow">Accountability</p><h3>Decision audit trail</h3><p class="panel-desc">Every send, stop, and recovery decision is recorded.</p></div><span class="tag">Live</span></div>
@@ -72,7 +72,7 @@
       </div>
     </section>
   </main>
-  <footer>Demo mode: messages are simulated in the worker terminal. No real payments or customer communications are sent.<br>© 2026 RupyaVasool. All rights reserved.</footer>
+  <footer>Demo only: data stays in this browser’s local storage. Use fake details; no backend, payments, or messages are used.<br>© 2026 RupyaVasool. All rights reserved.</footer>
   <dialog id="recovery-dialog" aria-labelledby="dialog-title">
     <form class="modal" method="dialog" id="recovery-form">
       <p class="eyebrow">A little help?</p><h3 id="dialog-title">What held you back?</h3><p>Choose a reason if you’d like. We’ll suggest a useful next step; you can skip this and return to your cart.</p>
@@ -96,18 +96,107 @@
     ];
     const money = value => `₹${Number(value || 0).toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
     const byId = id => document.getElementById(id);
+    const STORAGE_KEY = "rupyavasool-pages-demo-v1";
     let activeCartId = null;
     let toastTimer;
+
+    function readDemoState() {
+      try {
+        const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (value && Array.isArray(value.invoices) && Array.isArray(value.audit_logs)) return value;
+      } catch (_) { /* Use an empty demo if browser storage is unavailable. */ }
+      return {invoices:[], audit_logs:[]};
+    }
+    function saveDemoState(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    function addDemoAudit(state, invoice, action, content) {
+      state.audit_logs.unshift({
+        id:`${Date.now()}-${Math.random()}`, cart_id:invoice.id, step_number:0,
+        channel_used:"On-site", content_sent:content, action_taken:action,
+        timestamp:new Date().toISOString(),
+      });
+    }
 
     function showToast(message) {
       const toast = byId("toast"); toast.textContent = message; toast.classList.add("show");
       clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
     }
     async function api(url, options={}) {
-      const response = await fetch(url, {headers:{"Content-Type":"application/json"}, ...options});
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || `Request failed (${response.status})`);
-      return data;
+      const state = readDemoState();
+      const body = options.body ? JSON.parse(options.body) : {};
+      const invoiceById = id => state.invoices.find(invoice => invoice.id === id);
+      const id = () => `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+
+      if (url === "/api/checkout/initiate") {
+        if (!body.customer_name || !body.customer_email) throw new Error("Enter a name and email for the demo checkout.");
+        const invoice = {
+          id:id(), customer_name:body.customer_name, customer_email:body.customer_email,
+          item_name:body.item_name, amount:Number(body.amount).toFixed(2),
+          payment_status:"PENDING", conversion_value_recovered:"0.00",
+          recovered_by_agent:false, recovery_reason:null,
+          contact_consent:Boolean(body.contact_consent), opt_out:false,
+          created_at:new Date().toISOString(), updated_at:new Date().toISOString(),
+        };
+        state.invoices.unshift(invoice); saveDemoState(state);
+        return {success:true, data:{id:invoice.id}};
+      }
+
+      if (url === "/api/checkout/simulate-failure") {
+        const invoice=invoiceById(body.cart_id); if (!invoice) throw new Error("Demo checkout not found.");
+        if (invoice.payment_status !== "PAID") { invoice.payment_status="FAILED"; invoice.updated_at=new Date().toISOString(); addDemoAudit(state,invoice,"PAYMENT_ISSUE_SIMULATED","Customer simulated a payment issue."); }
+        saveDemoState(state); return {success:true};
+      }
+
+      if (url === "/api/checkout/simulate-success" || url === "/api/checkout/simulate-recovery") {
+        const invoice=invoiceById(body.cart_id); if (!invoice) throw new Error("Demo checkout not found.");
+        if (invoice.payment_status === "PAID") return {success:false};
+        const recovered=url.endsWith("simulate-recovery");
+        if (recovered && (!body.accepted_offer || !invoice.recovery_reason)) throw new Error("Choose a reason and suggestion first.");
+        invoice.payment_status="PAID"; invoice.updated_at=new Date().toISOString();
+        invoice.recovered_by_agent=recovered;
+        invoice.conversion_value_recovered=recovered?invoice.amount:"0.00";
+        addDemoAudit(state,invoice,recovered?"RECOVERED_BY_AGENT":"ORGANIC_PURCHASE",recovered?"Customer accepted a recovery suggestion and completed the demo purchase.":"Organic purchase completed; not attributed to the agent.");
+        saveDemoState(state); return {success:true};
+      }
+
+      const reasonMatch=url.match(/^\/api\/carts\/([^/]+)\/reason$/);
+      if (reasonMatch) {
+        const invoice=invoiceById(decodeURIComponent(reasonMatch[1])); if (!invoice) throw new Error("Demo checkout not found.");
+        if (invoice.payment_status === "PAID") throw new Error("This order is already complete.");
+        const suggestions={
+          payment_issue:"Try another payment method or retry securely when you’re ready.",
+          shipping_cost:"Review the delivery options and final total before deciding.",
+          price_comparison:"Compare the item and final delivered price at your own pace. We won’t claim a price match unless the store has verified one.",
+          forgot:"Your cart is saved. Continue checkout whenever it suits you.",
+          other:"Would you like help? Contact the store team and they can look into it.",
+        };
+        if (!suggestions[body.reason]) throw new Error("Choose one of the listed reasons.");
+        invoice.recovery_reason=body.reason; invoice.updated_at=new Date().toISOString();
+        addDemoAudit(state,invoice,"CAPTURED_REASON",`Customer selected reason: ${body.reason}. Policy suggestion displayed.`);
+        saveDemoState(state); return {success:true, item_name:invoice.item_name, suggestion:suggestions[body.reason]};
+      }
+
+      const optOutMatch=url.match(/^\/api\/carts\/([^/]+)\/opt-out$/);
+      if (optOutMatch) {
+        const invoice=invoiceById(decodeURIComponent(optOutMatch[1])); if (!invoice) throw new Error("Demo checkout not found.");
+        if (!invoice.opt_out) { invoice.opt_out=true; invoice.updated_at=new Date().toISOString(); addDemoAudit(state,invoice,"SKIPPED_OPT_OUT","Customer opted out. Future recovery messages suppressed."); }
+        saveDemoState(state); return {success:true};
+      }
+
+      if (url === "/api/dashboard") {
+        const paid=state.invoices.filter(invoice=>invoice.payment_status==="PAID");
+        const open=state.invoices.filter(invoice=>invoice.payment_status!=="PAID");
+        return {
+          success:true,
+          totals:{
+            total_recovered:paid.filter(invoice=>invoice.recovered_by_agent).reduce((total,invoice)=>total+Number(invoice.amount),0).toFixed(2),
+            total_organic:paid.filter(invoice=>!invoice.recovered_by_agent).reduce((total,invoice)=>total+Number(invoice.amount),0).toFixed(2),
+            total_at_risk:open.reduce((total,invoice)=>total+Number(invoice.amount),0).toFixed(2),
+            open_cases:open.length,
+          },
+          invoices:state.invoices, audit_logs:state.audit_logs.slice(0,50), batch_runs:[],
+        };
+      }
+      throw new Error("Unknown demo action.");
     }
     function renderProducts() {
       const host = byId("product-list"); host.replaceChildren();
@@ -197,7 +286,7 @@
           item.append(top,body,action);feed.append(item);
         });
         const batches=byId("batch-feed");batches.replaceChildren();
-        if (!data.batch_runs.length) { const empty=document.createElement("div");empty.className="empty";empty.textContent="Start the worker to create the first batch summary.";batches.append(empty); }
+        if (!data.batch_runs.length) { const empty=document.createElement("div");empty.className="empty";empty.textContent="Scheduled batch summaries require the local FastAPI worker.";batches.append(empty); }
         data.batch_runs.forEach(batch => {
           const row=document.createElement("article");row.className="batch-row";
           const identity=document.createElement("div"),id=document.createElement("div"),time=document.createElement("div");
@@ -212,6 +301,11 @@
       } catch (error) { console.error("Dashboard refresh failed",error); }
     }
     byId("complete-checkout").addEventListener("click",()=>activeCartId&&markPaid(activeCartId));
+    byId("reset-demo").addEventListener("click",()=>{
+      if (!window.confirm("Clear checkout and audit demo data saved in this browser?")) return;
+      localStorage.removeItem(STORAGE_KEY); activeCartId=null; byId("checkout-card").classList.remove("active");
+      byId("recovery-dialog").close(); refreshDashboard(); showToast("Browser demo data cleared.");
+    });
     byId("leave-checkout").addEventListener("click",openRecovery);
     byId("fail-checkout").addEventListener("click",simulateFailure);
     byId("close-checkout").addEventListener("click",()=>{activeCartId=null;byId("checkout-card").classList.remove("active");});
