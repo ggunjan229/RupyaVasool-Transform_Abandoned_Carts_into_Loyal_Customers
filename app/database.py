@@ -83,13 +83,18 @@ class Channel(str, enum.Enum):
     EMAIL = "Email"
     WHATSAPP = "WhatsApp"
     SMS = "SMS"
+    ON_SITE = "On-site"
 
 
 class ActionTaken(str, enum.Enum):
+    CAPTURED_REASON = "CAPTURED_REASON"
+    ORGANIC_PURCHASE = "ORGANIC_PURCHASE"
+    RECOVERED_BY_AGENT = "RECOVERED_BY_AGENT"
     SENT = "SENT"
     DISPATCH_FAILED = "DISPATCH_FAILED"
     SKIPPED_SUPPRESSED = "SKIPPED_SUPPRESSED"
     SKIPPED_OPT_OUT = "SKIPPED_OPT_OUT"
+    SKIPPED_NO_CONSENT = "SKIPPED_NO_CONSENT"
     SKIPPED_MAX_ATTEMPTS = "SKIPPED_MAX_ATTEMPTS"
     HALTED_PAID = "HALTED_PAID"
     ESCALATED_HUMAN = "ESCALATED_HUMAN"
@@ -106,7 +111,11 @@ class Invoice(Base):
 
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     customer_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    customer_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    recovery_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    contact_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    recovered_by_agent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     payment_status: Mapped[PaymentStatus] = mapped_column(
@@ -208,8 +217,24 @@ class BatchRun(Base):
 # ---------------------------------------------------------------------------
 
 def init_db() -> None:
-    """Create all tables if they don't exist. Safe to call repeatedly."""
+    """Create tables and apply additive SQLite upgrades for existing demos."""
     Base.metadata.create_all(bind=engine)
+    if engine.dialect.name == "sqlite":
+        # create_all does not add columns to tables from an earlier version.
+        # These additive changes preserve existing local demo data.
+        from sqlalchemy import inspect, text
+
+        existing = {column["name"] for column in inspect(engine).get_columns("invoices")}
+        additions = {
+            "customer_phone": "VARCHAR(32)",
+            "recovery_reason": "VARCHAR(40)",
+            "contact_consent": "BOOLEAN NOT NULL DEFAULT 0",
+            "recovered_by_agent": "BOOLEAN NOT NULL DEFAULT 0",
+        }
+        with engine.begin() as connection:
+            for name, definition in additions.items():
+                if name not in existing:
+                    connection.execute(text(f"ALTER TABLE invoices ADD COLUMN {name} {definition}"))
 
 
 def get_db():
