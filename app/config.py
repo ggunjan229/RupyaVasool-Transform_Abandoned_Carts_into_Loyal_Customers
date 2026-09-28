@@ -6,7 +6,7 @@ from decimal import Decimal
 
 class Settings(BaseSettings):
     # --- App ---
-    APP_NAME: str = "AI Revenue Recovery"
+    APP_NAME: str = "RupyaVasool"
     ENV: str = "development"
     DEBUG: bool = True
 
